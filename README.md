@@ -52,7 +52,7 @@ If you have any of the above problems, `intergitive` can help you!
 
 ### Installation and Execution
 
-> **macOS**: prebuilt downloads are Windows-only for now, but you can build a macOS `.app` yourself. Run the `Build macOS app` GitHub Actions workflow (Actions tab → Run workflow), then download the artifact for your Mac — `intergitive-mac-arm64` for Apple Silicon, `intergitive-mac-x64` for Intel. You can also build locally on a Mac — see the [contribution guide](docs/contribution-guides/en.md#building-for-macos).
+> **macOS**: prebuilt downloads are Windows-only for now, but you can build a macOS `.app` yourself. Run the `Build macOS app` GitHub Actions workflow (Actions tab → Run workflow), then download the `intergitive-mac-x64` artifact. It is an Intel (x64) build that also runs on Apple Silicon via Rosetta 2, so it works on all Macs. You can also build locally on a Mac — see the [contribution guide](docs/contribution-guides/en.md#building-for-macos).
 
 - Download the `intergitve` bundle from the link listed above.  
 - Uncompress the zip file. Choose a directory to put the extracted folder.  

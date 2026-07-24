@@ -81,14 +81,18 @@
 
 `intergitive` 是 Electron 應用程式，因此可以打包成 macOS 版本。由於 `nodegit` 是原生模組，打包必須在 Mac 上執行(無法從 Windows/Linux 跨平台編譯原生二進位檔)。
 
+目標架構為 **Intel (x64)**：`nodegit` 0.26.5 有 `electron-v8.2` / `darwin-x64` 的預編譯二進位檔，且 x64 的 Electron app 也能透過 Rosetta 2 在 Apple Silicon 上執行——所以單一 x64 版本即可涵蓋所有 Mac。
+
+- 透過 GitHub Actions(推薦)：
+  - `Build macOS app` workflow(`.github/workflows/build-mac.yml`)會在 macOS runner 上建置並將壓縮後的 `.app` 上傳為 artifact。到 repository 的 **Actions** 分頁手動觸發(Run workflow)，再下載 `intergitive-mac-x64` artifact 即可。
 - 在 Mac 本機建置：
   - 依上方步驟安裝相依套件與 `nodegit`(使用 `./post-npm-install-mac.sh`)
-  - 執行 `npm run build-pack-mac` (Intel) 或 `npm run build-pack-mac-arm64` (Apple Silicon)
-  - 成品位於 `out/intergitive-darwin-<arch>/intergitive.app`
-- 透過 GitHub Actions：
-  - `Build macOS app` workflow(`.github/workflows/build-mac.yml`)會在 macOS runner 上建置並將壓縮後的 `.app` 上傳為 artifact。到 repository 的 **Actions** 分頁手動觸發(Run workflow)，再下載 `intergitive-mac-x64` artifact 即可。
+  - 執行 `npm run build-pack-mac`
+  - 成品位於 `out/intergitive-darwin-x64/intergitive.app`
 
 > 此 app 未經簽章。首次開啟時 macOS Gatekeeper 可能會阻擋；請用右鍵 → 開啟，或執行 `xattr -dr com.apple.quarantine /path/to/intergitive.app`。
+
+> **不建置原生 arm64。** `nodegit` 0.26.5 沒有 arm64 預編譯檔，而其原始碼編譯的後備方案會從已關閉的 Bintray 下載 OpenSSL，未經修補無法建置。`build-pack-mac-arm64` 與 `./post-npm-install-mac.sh arm64` 保留給願意自行修補 `nodegit` OpenSSL 下載的人；Apple Silicon 上受支援的方式是用 Rosetta 2 執行 x64 版本。
 
 ### 上傳修改之前
 

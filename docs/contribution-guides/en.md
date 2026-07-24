@@ -79,14 +79,18 @@ Here are a brief list of NPM commands that might be useful
 
 `intergitive` is an Electron app, so it can be packaged for macOS. Because `nodegit` is a native module, the packaging must run on a Mac (the native binary cannot be cross-compiled from Windows/Linux).
 
+We target **Intel (x64)**: `nodegit` 0.26.5 ships a prebuilt binary for `electron-v8.2` / `darwin-x64`, and an x64 Electron app also runs on Apple Silicon via Rosetta 2 — so one x64 build covers every Mac.
+
+- Via GitHub Actions (recommended):
+  - The `Build macOS app` workflow (`.github/workflows/build-mac.yml`) builds on a macOS runner and uploads the zipped `.app` as an artifact. Trigger it from the repository's **Actions** tab (Run workflow), then download the `intergitive-mac-x64` artifact.
 - Locally on a Mac:
   - Install dependencies and build `nodegit` (see the setup steps above, using `./post-npm-install-mac.sh`)
-  - Run `npm run build-pack-mac` (Intel) or `npm run build-pack-mac-arm64` (Apple Silicon)
-  - The packaged app appears at `out/intergitive-darwin-<arch>/intergitive.app`
-- Via GitHub Actions:
-  - The `Build macOS app` workflow (`.github/workflows/build-mac.yml`) builds on a macOS runner and uploads the zipped `.app` as an artifact. Trigger it from the repository's **Actions** tab (Run workflow), then download the `intergitive-mac-x64` artifact.
+  - Run `npm run build-pack-mac`
+  - The packaged app appears at `out/intergitive-darwin-x64/intergitive.app`
 
 > The app is unsigned. On first launch macOS Gatekeeper may block it; open it via right-click → Open, or run `xattr -dr com.apple.quarantine /path/to/intergitive.app`.
+
+> **Native arm64 is not built.** `nodegit` 0.26.5 has no arm64 prebuilt, and its from-source fallback downloads OpenSSL from the now-defunct Bintray, so it cannot build unpatched. The `build-pack-mac-arm64` script and `./post-npm-install-mac.sh arm64` exist for anyone who patches `nodegit`'s OpenSSL fetch, but the supported path on Apple Silicon is to run the x64 build under Rosetta 2.
 
 ### Before Pushing Commits
 
