@@ -78,6 +78,12 @@ jobs:
         env:
           PYTHON: ${{ steps.setup_python.outputs.python-path }}
           npm_config_python: ${{ steps.setup_python.outputs.python-path }}
+          # The electron package's postinstall downloads the Electron binary for
+          # the HOST arch; on this arm64 runner that is electron-v8.2.5-darwin-
+          # arm64, which does not exist (Electron 8 predates Apple Silicon), so
+          # the download 404s. We don't need that binary here — electron-packager
+          # fetches its own x64 Electron for packaging — so skip it.
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
         run: npm install
 
       - name: Pack renderer + main (webpack, production)
