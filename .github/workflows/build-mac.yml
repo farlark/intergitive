@@ -71,6 +71,7 @@ jobs:
           target = 8.2.0
           target_arch = ${{ matrix.arch }}
           disturl = "https://electronjs.org/headers"
+          openssl_fips =
           EOF
           cat ./.npmrc
 

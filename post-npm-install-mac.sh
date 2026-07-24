@@ -46,6 +46,7 @@ runtime = electron
 target = ${ELECTRON_TARGET}
 target_arch = ${ARCH}
 disturl = "https://electronjs.org/headers"
+openssl_fips =
 EOF
 
 npm install "${NODEGIT_VERSION}"
