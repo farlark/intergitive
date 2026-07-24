@@ -52,6 +52,8 @@ If you have any of the above problems, `intergitive` can help you!
 
 ### Installation and Execution
 
+> **macOS**: prebuilt downloads are Windows-only for now, but you can build a macOS `.app` yourself. Run the `Build macOS app` GitHub Actions workflow (Actions tab → Run workflow → download the `intergitive-mac-x64` artifact), or build locally on a Mac — see the [contribution guide](docs/contribution-guides/en.md#building-for-macos).
+
 - Download the `intergitve` bundle from the link listed above.  
 - Uncompress the zip file. Choose a directory to put the extracted folder.  
   - Because of technical limitation, please avoid locating it in a directory that is monitored by git.

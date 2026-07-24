@@ -28,4 +28,22 @@ if (os.type() === 'Windows_NT') {
   }
 
   exec(`powershell.exe "${path.join(__dirname, '../post-npm-install-win.ps1')} ${arc}"`, puts)
+} else if (os.type() === 'Darwin') {
+  let arc = ''
+
+  switch (os.arch()) {
+    case 'x64':
+      arc = 'x64'
+      break
+
+    case 'arm64':
+      arc = 'arm64'
+      break
+
+    default:
+      throw new Error(`Unsupported CPU architecture for macOS: ${os.arch()}`)
+  }
+
+  const script = path.join(__dirname, '../post-npm-install-mac.sh')
+  exec(`bash "${script}" ${arc}`, puts)
 } else { throw new Error('Unsupported OS found: ' + os.type()) }

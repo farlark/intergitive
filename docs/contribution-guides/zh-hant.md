@@ -31,6 +31,9 @@
   - 透過指令檔自動安裝
     - 開通 PowerShell 執行指令檔的權限： 執行指令 `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process`  
     - 執行指令檔：執行指令 `.\post-npm-install-win.ps1 -architecture x64`
+  - 在 macOS 上，透過指令檔自動安裝
+    - 給予執行權限(第一次才需要)：`chmod +x ./post-npm-install-mac.sh`
+    - 執行指令檔：`./post-npm-install-mac.sh x64` (Apple Silicon 若想要原生版本可用 `arm64`；`x64` 也能透過 Rosetta 2 執行)
   - 手動安裝。我們將會為 node 以及 electron 兩種執行模式各自安裝一套 `nodegit`，並建立快取來快速切換這兩種模式
     - 初始化快取：執行 `node .\dev\module-switch.js init`
     - 丟棄既有快取(如果是第一次複製 `intergitive` 專案，可以跳過)：執行 `node .\dev\module-switch.js drop nodegit`
@@ -71,6 +74,21 @@
 - `test-pack`： 以開發版模式建置並執行專案
 - `test-pack-production`： 以正式版模式建置並執行專案
 - `build-pack-win64`： 以正式版模式建置，並且打包成最終成品到 `out` 資料夾 (執行前需要確定該資料夾沒有任何東西)  
+- `build-pack-mac`： (macOS，Intel x64) 以正式版模式建置並打包出 `.app` 到 `out` 資料夾
+- `build-pack-mac-arm64`： (macOS，Apple Silicon) 同上，但建置原生 arm64 的 `.app`
+
+### 建置 macOS 版本
+
+`intergitive` 是 Electron 應用程式，因此可以打包成 macOS 版本。由於 `nodegit` 是原生模組，打包必須在 Mac 上執行(無法從 Windows/Linux 跨平台編譯原生二進位檔)。
+
+- 在 Mac 本機建置：
+  - 依上方步驟安裝相依套件與 `nodegit`(使用 `./post-npm-install-mac.sh`)
+  - 執行 `npm run build-pack-mac` (Intel) 或 `npm run build-pack-mac-arm64` (Apple Silicon)
+  - 成品位於 `out/intergitive-darwin-<arch>/intergitive.app`
+- 透過 GitHub Actions：
+  - `Build macOS app` workflow(`.github/workflows/build-mac.yml`)會在 macOS runner 上建置並將壓縮後的 `.app` 上傳為 artifact。到 repository 的 **Actions** 分頁手動觸發(Run workflow)，再下載 `intergitive-mac-x64` artifact 即可。
+
+> 此 app 未經簽章。首次開啟時 macOS Gatekeeper 可能會阻擋；請用右鍵 → 開啟，或執行 `xattr -dr com.apple.quarantine /path/to/intergitive.app`。
 
 ### 上傳修改之前
 

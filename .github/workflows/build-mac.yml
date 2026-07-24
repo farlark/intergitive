@@ -1,0 +1,67 @@
+name: Build macOS app
+
+# Builds the intergitive Electron app for macOS on a real Mac runner, where the
+# native `nodegit` module can be compiled for the target platform. The packaged
+# .app is zipped and uploaded as a workflow artifact.
+#
+# Trigger manually from the Actions tab (workflow_dispatch) or on pushes to the
+# build branch.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - claude/web-github-pages-deploy-0i47y1
+
+jobs:
+  build-mac:
+    # macos-13 is the Intel (x64) runner. The build targets x64, which also
+    # runs on Apple Silicon Macs via Rosetta 2.
+    runs-on: macos-13
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Node 16 is contemporary with nodegit 0.26.x / Electron 8 and avoids
+          # incompatibilities between very new node-gyp/node-pre-gyp and the
+          # 2019-era native toolchain nodegit ships with.
+          node-version: '16'
+
+      - name: Show toolchain versions
+        run: |
+          node --version
+          npm --version
+          python3 --version || true
+          xcodebuild -version || true
+
+      - name: Install dependencies (builds nodegit for Electron)
+        # The committed .npmrc pins runtime=electron / target=8.2.0 / arch=x64,
+        # so npm install compiles nodegit against the Electron ABI used by the
+        # packaged app.
+        run: npm install
+
+      - name: Pack renderer + main (webpack, production) and package .app
+        run: npm run build-pack-mac-ci
+
+      - name: Zip the packaged app
+        run: |
+          cd out
+          APP_DIR=$(ls -d intergitive-darwin-x64 2>/dev/null | head -n 1)
+          if [ -z "$APP_DIR" ]; then
+            echo "Packaged output not found in ./out" >&2
+            ls -la
+            exit 1
+          fi
+          ditto -c -k --sequesterRsrc --keepParent "$APP_DIR/intergitive.app" "intergitive-mac-x64.zip"
+          ls -la
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: intergitive-mac-x64
+          path: out/intergitive-mac-x64.zip
+          if-no-files-found: error

@@ -29,6 +29,9 @@ Most part of `intergitive` is developed under the following environment settings
   - Via the script
     - Allow PowerShell to execute scripts: execute command `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process`  
     - Run the script: execute `.\post-npm-install-win.ps1 -architecture x64`
+  - On macOS, via the script
+    - Make the script executable (first time only): `chmod +x ./post-npm-install-mac.sh`
+    - Run the script: `./post-npm-install-mac.sh x64` (use `arm64` on Apple Silicon if you want a native build; `x64` also runs under Rosetta 2)
   - Manually. We will install `nodegit` for running in node and electron. We also maintain a cache for switching between the two modes quickly. 
     - Initialize cache: execute `node .\dev\module-switch.js init`
     - Clean up existing cache (one may skip this step if it is the first time of cloning `intergitive`): execute `node .\dev\module-switch.js drop nodegit`
@@ -69,6 +72,21 @@ Here are a brief list of NPM commands that might be useful
 - `test-pack`: pack and execute the project in development mode
 - `test-pack-production`: pack and execute the project in production mode
 - `build-pack-win64`: pack the project in production mode and bundle it into the `out` folder. Please ensure the folder is empty before execution
+- `build-pack-mac`: (macOS, Intel x64) pack in production mode and bundle a `.app` into the `out` folder
+- `build-pack-mac-arm64`: (macOS, Apple Silicon) same as above but builds a native arm64 `.app`
+
+### Building for macOS
+
+`intergitive` is an Electron app, so it can be packaged for macOS. Because `nodegit` is a native module, the packaging must run on a Mac (the native binary cannot be cross-compiled from Windows/Linux).
+
+- Locally on a Mac:
+  - Install dependencies and build `nodegit` (see the setup steps above, using `./post-npm-install-mac.sh`)
+  - Run `npm run build-pack-mac` (Intel) or `npm run build-pack-mac-arm64` (Apple Silicon)
+  - The packaged app appears at `out/intergitive-darwin-<arch>/intergitive.app`
+- Via GitHub Actions:
+  - The `Build macOS app` workflow (`.github/workflows/build-mac.yml`) builds on a macOS runner and uploads the zipped `.app` as an artifact. Trigger it from the repository's **Actions** tab (Run workflow), then download the `intergitive-mac-x64` artifact.
+
+> The app is unsigned. On first launch macOS Gatekeeper may block it; open it via right-click → Open, or run `xattr -dr com.apple.quarantine /path/to/intergitive.app`.
 
 ### Before Pushing Commits
 
