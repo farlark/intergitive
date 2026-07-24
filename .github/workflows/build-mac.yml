@@ -54,11 +54,14 @@ jobs:
         # Pin the native build to the Electron ABI used by the packaged app and
         # to this runner's architecture so nodegit compiles natively.
         run: |
+          # NOTE: the historical disturl atom.io/download/atom-shell is dead
+          # (Atom was sunset), which makes node-gyp download an HTML page
+          # instead of the Electron headers tarball. Use the current host.
           cat > ./.npmrc <<EOF
           runtime = electron
           target = 8.2.0
           target_arch = ${{ matrix.arch }}
-          disturl = "https://atom.io/download/atom-shell"
+          disturl = "https://electronjs.org/headers"
           EOF
           cat ./.npmrc
 

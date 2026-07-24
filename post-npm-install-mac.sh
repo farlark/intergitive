@@ -39,11 +39,13 @@ node ./dev/module-switch.js drop nodegit
 
 echo "==> Installing nodegit for electron (target ${ELECTRON_TARGET}, ${ARCH})"
 rm -f ./.npmrc
+# NOTE: the historical disturl atom.io/download/atom-shell is dead (Atom was
+# sunset); node-gyp needs the current Electron headers host to build from source.
 cat > ./.npmrc <<EOF
 runtime = electron
 target = ${ELECTRON_TARGET}
 target_arch = ${ARCH}
-disturl = "https://atom.io/download/atom-shell"
+disturl = "https://electronjs.org/headers"
 EOF
 
 npm install "${NODEGIT_VERSION}"
