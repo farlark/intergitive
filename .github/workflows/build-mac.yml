@@ -1,8 +1,13 @@
 name: Build macOS app
 
-# Builds the intergitive Electron app for macOS on a real Mac runner, where the
+# Builds the intergitive Electron app for macOS on real Mac runners, where the
 # native `nodegit` module can be compiled for the target platform. The packaged
 # .app is zipped and uploaded as a workflow artifact.
+#
+# A matrix builds both architectures, each on a host of the matching arch so
+# nodegit compiles natively:
+#   - arm64 on macos-14 (Apple Silicon) -- usually the least contended runner
+#   - x64   on macos-13 (Intel)         -- also runs on Apple Silicon via Rosetta
 #
 # Trigger manually from the Actions tab (workflow_dispatch) or on pushes to the
 # build branch.
@@ -15,9 +20,16 @@ on:
 
 jobs:
   build-mac:
-    # macos-13 is the Intel (x64) runner. The build targets x64, which also
-    # runs on Apple Silicon Macs via Rosetta 2.
-    runs-on: macos-13
+    name: build-mac (${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            arch: arm64
+          - os: macos-13
+            arch: x64
 
     steps:
       - name: Checkout
@@ -38,30 +50,55 @@ jobs:
           python3 --version || true
           xcodebuild -version || true
 
+      - name: Configure .npmrc for Electron / ${{ matrix.arch }}
+        # Pin the native build to the Electron ABI used by the packaged app and
+        # to this runner's architecture so nodegit compiles natively.
+        run: |
+          cat > ./.npmrc <<EOF
+          runtime = electron
+          target = 8.2.0
+          target_arch = ${{ matrix.arch }}
+          disturl = "https://atom.io/download/atom-shell"
+          EOF
+          cat ./.npmrc
+
       - name: Install dependencies (builds nodegit for Electron)
-        # The committed .npmrc pins runtime=electron / target=8.2.0 / arch=x64,
-        # so npm install compiles nodegit against the Electron ABI used by the
-        # packaged app.
         run: npm install
 
-      - name: Pack renderer + main (webpack, production) and package .app
-        run: npm run build-pack-mac-ci
+      - name: Pack renderer + main (webpack, production)
+        run: npm run pack
+
+      - name: Package the .app
+        run: >-
+          npx electron-packager . intergitive
+          --platform=darwin
+          --arch=${{ matrix.arch }}
+          --overwrite
+          --ignore="^/\.module_cache/"
+          --ignore="^/test"
+          --ignore="^/playground"
+          --ignore="^/bake"
+          --ignore="^/drawings"
+          --ignore="^/dev"
+          --ignore="^/src"
+          --ignore="^/example/execution"
+          --out="out"
 
       - name: Zip the packaged app
         run: |
           cd out
-          APP_DIR=$(ls -d intergitive-darwin-x64 2>/dev/null | head -n 1)
-          if [ -z "$APP_DIR" ]; then
-            echo "Packaged output not found in ./out" >&2
+          APP_DIR="intergitive-darwin-${{ matrix.arch }}"
+          if [ ! -d "$APP_DIR/intergitive.app" ]; then
+            echo "Packaged output not found at $APP_DIR/intergitive.app" >&2
             ls -la
             exit 1
           fi
-          ditto -c -k --sequesterRsrc --keepParent "$APP_DIR/intergitive.app" "intergitive-mac-x64.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_DIR/intergitive.app" "intergitive-mac-${{ matrix.arch }}.zip"
           ls -la
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: intergitive-mac-x64
-          path: out/intergitive-mac-x64.zip
+          name: intergitive-mac-${{ matrix.arch }}
+          path: out/intergitive-mac-${{ matrix.arch }}.zip
           if-no-files-found: error
