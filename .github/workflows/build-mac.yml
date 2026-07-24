@@ -43,6 +43,15 @@ jobs:
           # 2019-era native toolchain nodegit ships with.
           node-version: '16'
 
+      - name: Set up Python 3.11
+        # node-gyp (bundled with Node 16) imports distutils, which was removed
+        # from Python 3.12+. The runner's default Python is 3.14, so pin an
+        # interpreter that still ships distutils.
+        id: setup_python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Show toolchain versions
         run: |
           node --version
@@ -66,6 +75,10 @@ jobs:
           cat ./.npmrc
 
       - name: Install dependencies (builds nodegit for Electron)
+        env:
+          # Force node-gyp to use the distutils-capable interpreter.
+          PYTHON: ${{ steps.setup_python.outputs.python-path }}
+          npm_config_python: ${{ steps.setup_python.outputs.python-path }}
         run: npm install
 
       - name: Pack renderer + main (webpack, production)
