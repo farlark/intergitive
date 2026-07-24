@@ -30,7 +30,12 @@ concurrency:
 jobs:
   build-mac:
     name: build-mac (x64)
-    runs-on: macos-13
+    # Runs on the Apple Silicon runner (far less contended than the Intel
+    # macos-13 tier). We still build x64: node-pre-gyp fetches the prebuilt
+    # nodegit binary by target_arch (x64), independent of the host arch, and
+    # electron-packager pulls the x64 Electron — so no host-arch compilation is
+    # needed and the result runs on all Macs (Apple Silicon via Rosetta 2).
+    runs-on: macos-14
 
     steps:
       - name: Checkout
