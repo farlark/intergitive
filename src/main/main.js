@@ -1,6 +1,6 @@
 'use strict'
 
-const { app, BrowserWindow, ipcMain, shell } = require('electron')
+const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron')
 const urlTool = require('url')
 const path = require('path')
 const mainStore = require('./main-store')
@@ -19,8 +19,9 @@ function createWindow () {
     }
   })
 
-  // and load the index.html of the app.
-  win.loadFile('./index.html')
+  // and load the index.html of the app. Resolve it against this file's
+  // directory so the packaged app does not depend on the working directory.
+  win.loadFile(path.resolve(__dirname, './index.html'))
   if (mainStore.isDebug) { win.webContents.openDevTools() }
 
   win.on('closed', () => {
@@ -54,6 +55,12 @@ app.on('window-all-closed', () => {
 
 ipcMain.on('is-debug', (event, arg) => {
   event.returnValue = mainStore.isDebug
+})
+
+// Replaces the renderer's former use of the `remote` module, which Electron
+// removed in version 14.
+ipcMain.handle('show-message-box', async (event, options) => {
+  return dialog.showMessageBox(options)
 })
 
 // Invoke store methods and returns with store's new state

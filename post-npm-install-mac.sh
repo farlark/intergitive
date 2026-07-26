@@ -8,14 +8,14 @@
 # Usage:
 #   ./post-npm-install-mac.sh [architecture]
 #
-#   architecture: "x64" (default) or "arm64"
+#   architecture: "arm64" or "x64" (defaults to this machine's arch)
 #
 # Run this AFTER `npm install`. Requires the Electron target below to match the
 # `electron` devDependency in package.json.
 
 set -euo pipefail
 
-ARCH="${1:-x64}"
+ARCH="${1:-$(uname -m | sed 's/^x86_64$/x64/; s/^aarch64$/arm64/')}"
 
 case "$ARCH" in
   x64|arm64) ;;
@@ -25,8 +25,8 @@ case "$ARCH" in
     ;;
 esac
 
-ELECTRON_TARGET="8.2.0"
-NODEGIT_VERSION="nodegit@0.26.x"
+ELECTRON_TARGET="41.3.0"
+NODEGIT_VERSION="nodegit@0.28.0-alpha.38"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -39,14 +39,14 @@ node ./dev/module-switch.js drop nodegit
 
 echo "==> Installing nodegit for electron (target ${ELECTRON_TARGET}, ${ARCH})"
 rm -f ./.npmrc
-# NOTE: the historical disturl atom.io/download/atom-shell is dead (Atom was
-# sunset); node-gyp needs the current Electron headers host to build from source.
+# ELECTRON_TARGET must match the `electron` devDependency: nodegit publishes
+# its prebuilt binaries per Electron ABI (electron-v41.3), so a mismatch would
+# force a slow, fragile source build.
 cat > ./.npmrc <<EOF
 runtime = electron
 target = ${ELECTRON_TARGET}
 target_arch = ${ARCH}
 disturl = "https://electronjs.org/headers"
-openssl_fips =
 EOF
 
 npm install "${NODEGIT_VERSION}"

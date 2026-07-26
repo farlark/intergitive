@@ -77,22 +77,32 @@
 - `build-pack-mac`： (macOS，Intel x64) 以正式版模式建置並打包出 `.app` 到 `out` 資料夾
 - `build-pack-mac-arm64`： (macOS，Apple Silicon) 同上，但建置原生 arm64 的 `.app`
 
+> 本專案需要 **Node.js 22.12 以上**(`@electron/packager` 20 與 `nodegit` 0.28 皆有此要求)。
+
 ### 建置 macOS 版本
 
 `intergitive` 是 Electron 應用程式，因此可以打包成 macOS 版本。由於 `nodegit` 是原生模組，打包必須在 Mac 上執行(無法從 Windows/Linux 跨平台編譯原生二進位檔)。
 
-目標架構為 **Intel (x64)**：`nodegit` 0.26.5 有 `electron-v8.2` / `darwin-x64` 的預編譯二進位檔，且 x64 的 Electron app 也能透過 Rosetta 2 在 Apple Silicon 上執行——所以單一 x64 版本即可涵蓋所有 Mac。
+**Apple Silicon (arm64)** 與 **Intel (x64)** 都有原生支援。
 
 - 透過 GitHub Actions(推薦)：
-  - `Build macOS app` workflow(`.github/workflows/build-mac.yml`)會在 macOS runner 上建置並將壓縮後的 `.app` 上傳為 artifact。到 repository 的 **Actions** 分頁手動觸發(Run workflow)，再下載 `intergitive-mac-x64` artifact 即可。
+  - `Build macOS app` workflow(`.github/workflows/build-mac.yml`)會建置兩種架構，並將壓縮後的 `.app` 各自上傳為 artifact。到 repository 的 **Actions** 分頁手動觸發(Run workflow)，再下載 `intergitive-mac-arm64` 或 `intergitive-mac-x64`。
 - 在 Mac 本機建置：
   - 依上方步驟安裝相依套件與 `nodegit`(使用 `./post-npm-install-mac.sh`)
-  - 執行 `npm run build-pack-mac`
-  - 成品位於 `out/intergitive-darwin-x64/intergitive.app`
+  - 執行 `npm run build-pack-mac-arm64` (Apple Silicon) 或 `npm run build-pack-mac` (Intel)
+  - 成品位於 `out/intergitive-darwin-<arch>/intergitive.app`
 
-> 此 app 未經簽章。首次開啟時 macOS Gatekeeper 可能會阻擋；請用右鍵 → 開啟，或執行 `xattr -dr com.apple.quarantine /path/to/intergitive.app`。
+> 此 app 未經簽章。首次開啟時 macOS Gatekeeper 可能會阻擋(甚至顯示 app「已損毀」)；請用右鍵 → 開啟，或執行 `xattr -dr com.apple.quarantine /path/to/intergitive.app`。
 
-> **不建置原生 arm64。** `nodegit` 0.26.5 沒有 arm64 預編譯檔，而其原始碼編譯的後備方案會從已關閉的 Bintray 下載 OpenSSL，未經修補無法建置。`build-pack-mac-arm64` 與 `./post-npm-install-mac.sh arm64` 保留給願意自行修補 `nodegit` OpenSSL 下載的人；Apple Silicon 上受支援的方式是用 Rosetta 2 執行 x64 版本。
+#### Electron 版本必須與 nodegit 的 ABI 對齊
+
+`nodegit` 的預編譯二進位檔是依 Electron ABI 發佈的。本專案將 `electron` 釘在 **41.3.0**，因為 `nodegit` 0.28.0-alpha.38 提供了 `electron-v41.3` 的預編譯檔(darwin/win32/linux，arm64 與 x64 皆有)。
+
+如果要更換 `electron` 版本，必須挑選 `major.minor` 同樣有對應 `nodegit` 預編譯檔的版本，並同步更新 `.npmrc`、`post-npm-install-mac.sh` 與 CI workflow 裡的 `target`。否則 `node-pre-gyp` 會退回從原始碼編譯 `nodegit`，既慢又容易失敗。可用以下指令列出現有的預編譯檔：
+
+```
+curl -s "https://axonodegit.s3.amazonaws.com/?list-type=2&prefix=nodegit/nodegit/nodegit-v0.28&max-keys=1000" | tr '<' '\n' | grep -o 'nodegit-v[^<]*darwin[^<]*'
+```
 
 ### 上傳修改之前
 

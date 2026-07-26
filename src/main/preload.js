@@ -1,6 +1,6 @@
 'use strict'
 
-const { contextBridge, ipcRenderer, remote } = require('electron')
+const { contextBridge, ipcRenderer } = require('electron')
 
 function invokeService (serviceName, methodName, extraArgs) {
   extraArgs = extraArgs || []
@@ -28,12 +28,9 @@ contextBridge.exposeInMainWorld(
         actionContent
       )
     },
-    isDebug: (configName) => ipcRenderer.sendSync('is-debug', [configName])
-  }
-)
-
-contextBridge.exposeInMainWorld(
-  'electronRemote', {
-    dialog: () => remote.dialog
+    isDebug: (configName) => ipcRenderer.sendSync('is-debug', [configName]),
+    // The `remote` module was removed in Electron 14, so dialogs are shown by
+    // asking the main process instead of reaching into it from the renderer.
+    showMessageBox: (options) => ipcRenderer.invoke('show-message-box', options)
   }
 )

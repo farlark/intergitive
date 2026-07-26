@@ -37,7 +37,7 @@ module.exports = (env, options) => {
       // ],
     },
     plugins: [
-      new IgnorePlugin(/build\/Debug\/nodegit.node$/i),
+      new IgnorePlugin({ resourceRegExp: /build\/Debug\/nodegit.node$/i }),
       new DefinePlugin({
         'process.env.BUNDLE_VERSION': JSON.stringify(process.env.npm_package_version)
       }),

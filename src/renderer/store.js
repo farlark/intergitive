@@ -16,7 +16,6 @@ const { COURSE_CONFIG_SCHEMA } = require('../common/course-config-schema')
 const ProcessState = stepConfigs.ProcessState
 
 const api = window.api
-const dialog = window.electronRemote.dialog
 
 function invokeExecute (action) {
   return api.invokeExecute(yaml.dump(action, { schema: LEVEL_CONFIG_SCHEMA }))
@@ -499,7 +498,7 @@ const store = {
           .catch(err => {
             console.error(`Error occured when loading repo setups ${err}`)
             if (err.code === 'EBUSY') {
-              return dialog.showMessageBox({
+              return api.showMessageBox({
                 message: this.state.levelState.terms.loadEbusyMessage
               })
                 .then(() => {

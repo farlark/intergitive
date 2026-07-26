@@ -1,19 +1,15 @@
 name: Build macOS app
 
-# Builds the intergitive Electron app for macOS on a real Mac runner, where the
-# native nodegit module is available for the target platform.
+# Builds the intergitive Electron app for macOS.
 #
-# We build x64: nodegit 0.26.5 ships a prebuilt binary for electron-v8.2 /
-# darwin-x64 (no source compile needed), and an x64 Electron app also runs on
-# Apple Silicon via Rosetta 2 -- so a single x64 build covers all Macs.
+# The app targets Electron 41.3.0, which is the version nodegit
+# 0.28.0-alpha.38 publishes prebuilt binaries for (ABI tag electron-v41.3),
+# for both darwin-arm64 and darwin-x64. Because both prebuilts exist, no
+# native compilation happens here and both architectures can be produced on
+# the Apple Silicon runner.
 #
-# (A native arm64 build is intentionally not produced: nodegit 0.26.5 has no
-# arm64 prebuilt, and its from-source fallback downloads OpenSSL from the
-# now-defunct Bintray, so it cannot build unpatched. Run the x64 app under
-# Rosetta 2 on Apple Silicon instead.)
-#
-# Trigger manually from the Actions tab (workflow_dispatch) or on pushes to the
-# build branch.
+# Trigger manually from the Actions tab (workflow_dispatch) or on pushes to
+# the build branch.
 
 on:
   workflow_dispatch:
@@ -21,27 +17,27 @@ on:
     branches:
       - claude/web-github-pages-deploy-0i47y1
 
-# Cancel superseded runs on the same branch so queued jobs don't pile up on the
-# contended macOS runners.
+# Cancel superseded runs on the same branch so queued jobs don't pile up on
+# the contended macOS runners.
 concurrency:
   group: build-mac-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build-mac:
-    name: build-mac (x64)
-    # Runs on the Apple Silicon runner (far less contended than the Intel
-    # macos-13 tier). We still build x64: node-pre-gyp fetches the prebuilt
-    # nodegit binary by target_arch (x64), independent of the host arch, and
-    # electron-packager pulls the x64 Electron — so no host-arch compilation is
-    # needed and the result runs on all Macs (Apple Silicon via Rosetta 2).
+    name: build-mac (${{ matrix.arch }})
+    # Apple Silicon runner: far less contended than the Intel tier, and it can
+    # produce both architectures since only prebuilt binaries are downloaded.
     runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, x64]
 
     env:
-      # Skip the electron package's postinstall binary download for every step:
-      # on this arm64 host it would try to fetch electron-v8.2.5-darwin-arm64
-      # (which does not exist — Electron 8 predates Apple Silicon) and 404. The
-      # binary isn't needed here; electron-packager fetches its own x64 Electron.
+      # electron's postinstall downloads a binary for the host arch; we don't
+      # need it because @electron/packager fetches the Electron build it
+      # packages. Skipping keeps installs fast and avoids arch mismatches.
       ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
 
     steps:
@@ -51,17 +47,8 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          # Node 16 is contemporary with nodegit 0.26.x / Electron 8.
-          node-version: '16'
-
-      - name: Set up Python 3.11
-        # node-gyp (bundled with Node 16) imports distutils, removed in Python
-        # 3.12+. Pin an interpreter that still ships it, in case anything falls
-        # back to a source build.
-        id: setup_python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+          # @electron/packager 20 requires >= 22.12.0; nodegit 0.28 requires >= 20.
+          node-version: '22'
 
       - name: Show toolchain versions
         run: |
@@ -70,22 +57,36 @@ jobs:
           python3 --version || true
           xcodebuild -version || true
 
-      - name: Configure .npmrc for Electron / x64
+      - name: Configure .npmrc for Electron / ${{ matrix.arch }}
+        # target must stay in lockstep with the electron devDependency so
+        # node-pre-gyp resolves the matching nodegit prebuilt (electron-v41.3).
         run: |
           cat > ./.npmrc <<EOF
           runtime = electron
-          target = 8.2.0
-          target_arch = x64
+          target = 41.3.0
+          target_arch = ${{ matrix.arch }}
           disturl = "https://electronjs.org/headers"
-          openssl_fips =
           EOF
           cat ./.npmrc
 
-      - name: Install dependencies (nodegit uses the prebuilt electron-v8.2 x64 binary)
-        env:
-          PYTHON: ${{ steps.setup_python.outputs.python-path }}
-          npm_config_python: ${{ steps.setup_python.outputs.python-path }}
+      - name: Install dependencies
         run: npm install
+
+      - name: Verify nodegit resolved to a prebuilt binary
+        # If the prebuilt download had silently fallen back to a source build,
+        # the binary would be missing or built for the wrong arch. Fail early
+        # and loudly instead of shipping a broken .app.
+        run: |
+          BIN=node_modules/nodegit/build/Release/nodegit.node
+          if [ ! -f "$BIN" ]; then
+            echo "nodegit native binary not found at $BIN" >&2
+            exit 1
+          fi
+          file "$BIN"
+          file "$BIN" | grep -q "${{ matrix.arch == 'x64' && 'x86_64' || 'arm64' }}" || {
+            echo "nodegit binary is not ${{ matrix.arch }}" >&2
+            exit 1
+          }
 
       - name: Pack renderer + main (webpack, production)
         run: npm run pack
@@ -94,7 +95,7 @@ jobs:
         run: >-
           npx electron-packager . intergitive
           --platform=darwin
-          --arch=x64
+          --arch=${{ matrix.arch }}
           --overwrite
           --ignore="^/\.module_cache/"
           --ignore="^/test"
@@ -109,26 +110,26 @@ jobs:
       - name: Zip the packaged app
         run: |
           cd out
-          APP_DIR="intergitive-darwin-x64"
+          APP_DIR="intergitive-darwin-${{ matrix.arch }}"
           if [ ! -d "$APP_DIR/intergitive.app" ]; then
             echo "Packaged output not found at $APP_DIR/intergitive.app" >&2
             ls -la
             exit 1
           fi
-          ditto -c -k --sequesterRsrc --keepParent "$APP_DIR/intergitive.app" "intergitive-mac-x64.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_DIR/intergitive.app" "intergitive-mac-${{ matrix.arch }}.zip"
           ls -la
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: intergitive-mac-x64
-          path: out/intergitive-mac-x64.zip
+          name: intergitive-mac-${{ matrix.arch }}
+          path: out/intergitive-mac-${{ matrix.arch }}.zip
           if-no-files-found: error
 
       - name: Upload npm debug log on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: npm-debug-logs
+          name: npm-debug-logs-${{ matrix.arch }}
           path: ~/.npm/_logs/*.log
           if-no-files-found: ignore

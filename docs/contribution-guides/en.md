@@ -75,22 +75,32 @@ Here are a brief list of NPM commands that might be useful
 - `build-pack-mac`: (macOS, Intel x64) pack in production mode and bundle a `.app` into the `out` folder
 - `build-pack-mac-arm64`: (macOS, Apple Silicon) same as above but builds a native arm64 `.app`
 
+> This project requires **Node.js 22.12 or newer** (`@electron/packager` 20 and `nodegit` 0.28 both need it).
+
 ### Building for macOS
 
-`intergitive` is an Electron app, so it can be packaged for macOS. Because `nodegit` is a native module, the packaging must run on a Mac (the native binary cannot be cross-compiled from Windows/Linux).
+`intergitive` is an Electron app, so it can be packaged for macOS. Because `nodegit` is a native module, packaging must run on a Mac (the native binary cannot be cross-compiled from Windows/Linux).
 
-We target **Intel (x64)**: `nodegit` 0.26.5 ships a prebuilt binary for `electron-v8.2` / `darwin-x64`, and an x64 Electron app also runs on Apple Silicon via Rosetta 2 — so one x64 build covers every Mac.
+Both **Apple Silicon (arm64)** and **Intel (x64)** are supported natively.
 
 - Via GitHub Actions (recommended):
-  - The `Build macOS app` workflow (`.github/workflows/build-mac.yml`) builds on a macOS runner and uploads the zipped `.app` as an artifact. Trigger it from the repository's **Actions** tab (Run workflow), then download the `intergitive-mac-x64` artifact.
+  - The `Build macOS app` workflow (`.github/workflows/build-mac.yml`) builds both architectures and uploads each zipped `.app` as an artifact. Trigger it from the repository's **Actions** tab (Run workflow), then download `intergitive-mac-arm64` or `intergitive-mac-x64`.
 - Locally on a Mac:
-  - Install dependencies and build `nodegit` (see the setup steps above, using `./post-npm-install-mac.sh`)
-  - Run `npm run build-pack-mac`
-  - The packaged app appears at `out/intergitive-darwin-x64/intergitive.app`
+  - Install dependencies and `nodegit` (see the setup steps above, using `./post-npm-install-mac.sh`)
+  - Run `npm run build-pack-mac-arm64` (Apple Silicon) or `npm run build-pack-mac` (Intel)
+  - The packaged app appears at `out/intergitive-darwin-<arch>/intergitive.app`
 
-> The app is unsigned. On first launch macOS Gatekeeper may block it; open it via right-click → Open, or run `xattr -dr com.apple.quarantine /path/to/intergitive.app`.
+> The app is unsigned. On first launch macOS Gatekeeper may block it (it can even report the app as "damaged"); open it via right-click → Open, or run `xattr -dr com.apple.quarantine /path/to/intergitive.app`.
 
-> **Native arm64 is not built.** `nodegit` 0.26.5 has no arm64 prebuilt, and its from-source fallback downloads OpenSSL from the now-defunct Bintray, so it cannot build unpatched. The `build-pack-mac-arm64` script and `./post-npm-install-mac.sh arm64` exist for anyone who patches `nodegit`'s OpenSSL fetch, but the supported path on Apple Silicon is to run the x64 build under Rosetta 2.
+#### Keep the Electron version pinned to the nodegit ABI
+
+`nodegit` publishes prebuilt binaries per Electron ABI. This project pins `electron` to **41.3.0** because `nodegit` 0.28.0-alpha.38 ships prebuilts tagged `electron-v41.3` for darwin/win32/linux on both arm64 and x64.
+
+If you change the `electron` version, you must pick one whose `major.minor` still has a matching `nodegit` prebuilt, and update `target` in `.npmrc`, `post-npm-install-mac.sh`, and the CI workflow to match. Otherwise `node-pre-gyp` falls back to compiling `nodegit` from source, which is slow and fragile. The available prebuilts can be listed from `nodegit`'s binary host:
+
+```
+curl -s "https://axonodegit.s3.amazonaws.com/?list-type=2&prefix=nodegit/nodegit/nodegit-v0.28&max-keys=1000" | tr '<' '\n' | grep -o 'nodegit-v[^<]*darwin[^<]*'
+```
 
 ### Before Pushing Commits
 
